@@ -10,6 +10,7 @@ const app = express();
 // Middleware to parse JSON
 app.use(express.json());
 app.use(cookieParser());
+app.use(express.static('public'));
 
 // CSRF Protection: Enable for all state-changing requests
 const csrfProtection = csrf({

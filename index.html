@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager Authentication</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 2rem auto; padding: 0 1rem; }
+        .container { border: 1px solid #ccc; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+        input, select { width: 100%; padding: 0.5rem; box-sizing: border-box; }
+        button { width: 100%; padding: 0.75rem; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; margin-top: 10px; }
+        button:hover { background-color: #0056b3; }
+        button.secondary { background-color: #6c757d; }
+        button.secondary:hover { background-color: #545b62; }
+        .hidden { display: none; }
+        #message { margin-top: 1rem; padding: 1rem; border-radius: 4px; text-align: center; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align: center;">Task Manager</h1>
+        
+        <div id="auth-forms">
+            <!-- Register Form -->
+            <div id="register-section">
+                <h2>Register</h2>
+                <form id="register-form">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" required minlength="8">
+                    </div>
+                    <button type="submit">Register</button>
+                </form>
+                <p>Already have an account? <a href="#" onclick="toggleForms()">Login here</a></p>
+            </div>
+
+            <!-- Login Form -->
+            <div id="login-section" class="hidden">
+                <h2>Login</h2>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" required>
+                    </div>
+                    <button type="submit">Login</button>
+                </form>
+                <p>Need an account? <a href="#" onclick="toggleForms()">Register here</a></p>
+            </div>
+        </div>
+
+        <!-- Dashboard (Visible after login) -->
+        <div id="dashboard" class="hidden">
+            <h2>Welcome!</h2>
+            <p>You have successfully logged in.</p>
+            
+            <hr style="margin: 20px 0;">
+            
+            <h3>Create New Task</h3>
+            <form id="create-task-form">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" name="title" required placeholder="Task title">
+                </div>
+                <div class="form-group">
+                    <label>Priority</label>
+                    <select name="priority">
+                        <option value="Low">Low</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="High">High</option>
+                    </select>
+                </div>
+                <button type="submit">Add Task</button>
+            </form>
+            <h3>My Tasks</h3>
+            <div id="task-list"></div>
+            <hr style="margin: 20px 0;">
+
+            <button onclick="handleLogout()" class="secondary">Logout</button>
+        </div>
+
+        <div id="message" class="hidden"></div>
+    </div>
+
+    <script>
+        let csrfToken = '';
+
+        // 1. Fetch CSRF Token on page load
+        fetch('/api/csrf-token')
+            .then(res => res.json())
+            .then(data => { csrfToken = data.csrfToken; })
+            .catch(err => showMessage('Error loading security token', true));
+
+        function toggleForms() {
+            document.getElementById('register-section').classList.toggle('hidden');
+            document.getElementById('login-section').classList.toggle('hidden');
+            document.getElementById('message').classList.add('hidden');
+        }
+
+        function showMessage(text, isError = false) {
+            const el = document.getElementById('message');
+            el.textContent = text;
+            el.className = isError ? 'error' : 'success';
+            el.classList.remove('hidden');
+        }
+
+        async function handleAuth(endpoint, formData) {
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                    body: JSON.stringify(Object.fromEntries(formData))
+                });
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    showMessage('Success!');
+                    document.getElementById('auth-forms').classList.add('hidden');
+                    document.getElementById('dashboard').classList.remove('hidden');
+                    loadTasks();
+                } else {
+                    showMessage(data.message || 'Error occurred', true);
+                }
+            } catch (err) {
+                showMessage(err.message, true);
+            }
+        }
+
+        document.getElementById('register-form').addEventListener('submit', e => {
+            e.preventDefault();
+            handleAuth('/api/auth/register', new FormData(e.target));
+        });
+
+        document.getElementById('login-form').addEventListener('submit', e => {
+            e.preventDefault();
+            handleAuth('/api/auth/login', new FormData(e.target));
+        });
+
+        // Task Management Functions
+        async function loadTasks() {
+            try {
+                const res = await fetch('/api/tasks');
+                const data = await res.json();
+                const list = document.getElementById('task-list');
+                list.innerHTML = '';
+                
+                if (data.status === 'success' && data.data.tasks) {
+                    data.data.tasks.forEach(task => {
+                        const item = document.createElement('div');
+                        item.style.border = '1px solid #eee';
+                        item.style.padding = '10px';
+                        item.style.marginBottom = '10px';
+                        item.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <strong>${task.title}</strong> <span style="font-size:0.8em; padding:2px 5px; background:#eee; border-radius:3px;">${task.priority}</span>
+                                    <div><small>Status: ${task.status}</small></div>
+                                </div>
+                                <button onclick="deleteTask('${task.id}')" class="secondary" style="width:auto; margin:0; padding:5px 10px; font-size:0.8rem;">Delete</button>
+                            </div>
+                        `;
+                        list.appendChild(item);
+                    });
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        document.getElementById('create-task-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            await handleAuth('/api/tasks', new FormData(e.target));
+            e.target.reset();
+            loadTasks();
+        });
+
+        async function deleteTask(id) {
+            if(!confirm('Are you sure?')) return;
+            const res = await fetch(`/api/tasks/${id}`, {
+                method: 'DELETE',
+                headers: { 'X-CSRFToken': csrfToken }
+            });
+            if(res.status === 204) { loadTasks(); showMessage('Task deleted'); }
+            else { const d = await res.json(); showMessage(d.message, true); }
+        }
+
+        async function handleLogout() {
+            await fetch('/api/auth/logout');
+            location.reload();
+        }
+    </script>
+</body>
+</html>
