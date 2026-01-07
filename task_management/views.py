@@ -10,8 +10,8 @@ from django.middleware.csrf import get_token
 from django.core.cache import cache
 from .models import Task
 
-# Mass Assignment Protection: Define allowed fields for updates
-FILLABLE_FIELDS = ['title', 'description', 'priority', 'status']
+# Mass Assignment Protect: Define allowed fields for updates
+FILLABLE_FIELDS = ['title', 'description', 'priority', 'status', 'due_date']
 
 # Helper to parse JSON body
 def parse_body(request):
@@ -162,9 +162,10 @@ def register_view(request):
     if not username or not password:
         return JsonResponse({'status': 'fail', 'message': 'Username and password required'}, status=400)
 
-    # Input Validation: Whitelist/Regex for username (OWASP ASVS V5)
+    # Input Validation: Whitelist/Regex for username
     if not re.match(r'^[a-zA-Z0-9_]+$', username):
-        return JsonResponse({'status': 'fail', 'message': 'Username can only contain letters, numbers, and underscores'}, status=400)
+        return JsonResponse({'status': 'fail', 'message': 'Username can only '
+        'contain letters, numbers, and underscores'}, status=400)
 
     if User.objects.filter(username=username).exists():
         return JsonResponse({'status': 'fail', 'message': 'Username already exists'}, status=400)
@@ -468,6 +469,10 @@ def dashboard_view(request):
                         <div class="form-group">
                             <textarea id="description" placeholder="Description (optional)" rows="3"></textarea>
                         </div>
+                        <div class="form-group">
+                            <label for="due_date" style="display:block; margin-bottom:5px; color:#666; font-weight:600; font-size:0.9rem;">Due Date</label>
+                            <input type="date" id="due_date">
+                        </div>
                         <div class="form-group" style="display: flex; gap: 10px;">
                             <select id="priority" onchange="updateSelectColor(this)">
                                 <option value="Low">Low Priority</option>
@@ -524,6 +529,7 @@ def dashboard_view(request):
                                     <div class="task-meta">
                                         <span class="badge badge-${escapeAttr(task.priority).toLowerCase()}">${escapeHtml(task.priority)}</span>
                                         <span class="badge" style="background:#f5f5f5; color:#666;">${escapeHtml(task.status)}</span>
+                                        ${task.due_date ? `<span class="badge" style="background:#e3f2fd; color:#1565c0;">Due: ${escapeHtml(task.due_date)}</span>` : ''}
                                         <p>${escapeHtml(task.description || '')}</p>
                                     </div>
                                 </div>
@@ -568,6 +574,7 @@ def dashboard_view(request):
                     document.getElementById('taskId').value = task.id;
                     document.getElementById('title').value = task.title;
                     document.getElementById('description').value = task.description || '';
+                    document.getElementById('due_date').value = task.due_date || '';
                     document.getElementById('priority').value = task.priority;
                     document.getElementById('status').value = task.status;
                     document.getElementById('submitBtn').textContent = 'Update Task';
@@ -597,6 +604,7 @@ def dashboard_view(request):
                     const id = document.getElementById('taskId').value;
                     const title = document.getElementById('title').value;
                     const description = document.getElementById('description').value;
+                    const due_date = document.getElementById('due_date').value;
                     const priority = document.getElementById('priority').value;
                     const status = document.getElementById('status').value;
 
@@ -609,7 +617,7 @@ def dashboard_view(request):
                             'Content-Type': 'application/json',
                             'X-CSRFToken': csrfToken
                         },
-                        body: JSON.stringify({title, description, priority, status})
+                        body: JSON.stringify({title, description, priority, status, due_date})
                     });
 
                     if(response.ok) {
@@ -657,6 +665,11 @@ def validate_task_input(data):
     if 'description' in data and data['description']:
         if re.search(r'[<>]', data['description']):
             errors.append("Invalid description. HTML tags are not allowed.")
+
+    # Regex Validation: Due Date (YYYY-MM-DD)
+    if 'due_date' in data and data['due_date']:
+        if not re.match(r'^\d{4}-\d{2}-\d{2}$', data['due_date']):
+            errors.append("Invalid due date. Format must be YYYY-MM-DD.")
             
     return errors
 
@@ -667,7 +680,7 @@ def task_list_create_view(request):
 
     if request.method == 'GET':
         # Return tasks as list of dicts
-        tasks = list(Task.objects.filter(user=request.user).values('id', 'title', 'status', 'priority', 'description'))
+        tasks = list(Task.objects.filter(user=request.user).values('id', 'title', 'status', 'priority', 'description', 'due_date'))
         return JsonResponse({'status': 'success', 'data': {'tasks': tasks}})
 
     if request.method == 'POST':
@@ -686,7 +699,8 @@ def task_list_create_view(request):
                 title=data.get('title'),
                 description=data.get('description', ''),
                 priority=data.get('priority', 'Medium'),
-                status=data.get('status', 'pending')
+                status=data.get('status', 'pending'),
+                due_date=data.get('due_date') or None
             )
             return JsonResponse({'status': 'success', 'data': {'task': {
                 'id': task.id, 'title': task.title, 'priority': task.priority, 'status': task.status
