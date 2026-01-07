@@ -472,6 +472,8 @@ def dashboard_view(request):
                         <div class="form-group">
                             <label for="due_date" style="display:block; margin-bottom:5px; color:#666; font-weight:600; font-size:0.9rem;">Due Date</label>
                             <input type="date" id="due_date">
+                            <label for="due_date" style="display:block; margin-bottom:5px; color:#666; font-weight:600; font-size:0.9rem;">Due Date & Time</label>
+                            <input type="datetime-local" id="due_date">
                         </div>
                         <div class="form-group" style="display: flex; gap: 10px;">
                             <select id="priority" onchange="updateSelectColor(this)">
@@ -530,6 +532,7 @@ def dashboard_view(request):
                                         <span class="badge badge-${escapeAttr(task.priority).toLowerCase()}">${escapeHtml(task.priority)}</span>
                                         <span class="badge" style="background:#f5f5f5; color:#666;">${escapeHtml(task.status)}</span>
                                         ${task.due_date ? `<span class="badge" style="background:#e3f2fd; color:#1565c0;">Due: ${escapeHtml(task.due_date)}</span>` : ''}
+                                        ${task.due_date ? `<span class="badge" style="background:#e3f2fd; color:#1565c0;">Due: ${escapeHtml(task.due_date.replace('T', ' ').slice(0, 16))}</span>` : ''}
                                         <p>${escapeHtml(task.description || '')}</p>
                                     </div>
                                 </div>
@@ -575,6 +578,7 @@ def dashboard_view(request):
                     document.getElementById('title').value = task.title;
                     document.getElementById('description').value = task.description || '';
                     document.getElementById('due_date').value = task.due_date || '';
+                    document.getElementById('due_date').value = task.due_date ? task.due_date.slice(0, 16) : '';
                     document.getElementById('priority').value = task.priority;
                     document.getElementById('status').value = task.status;
                     document.getElementById('submitBtn').textContent = 'Update Task';
@@ -667,9 +671,12 @@ def validate_task_input(data):
             errors.append("Invalid description. HTML tags are not allowed.")
 
     # Regex Validation: Due Date (YYYY-MM-DD)
+    # Regex Validation: Due Date (YYYY-MM-DDTHH:MM)
     if 'due_date' in data and data['due_date']:
         if not re.match(r'^\d{4}-\d{2}-\d{2}$', data['due_date']):
             errors.append("Invalid due date. Format must be YYYY-MM-DD.")
+        if not re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$', data['due_date']):
+            errors.append("Invalid due date. Format must be YYYY-MM-DDTHH:MM.")
             
     return errors
 
