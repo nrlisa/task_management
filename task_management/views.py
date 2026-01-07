@@ -1,4 +1,5 @@
 import json
+import re
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
@@ -6,7 +7,11 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth.decorators import login_required
 from django.middleware.csrf import get_token
+from django.core.cache import cache
 from .models import Task
+
+# Mass Assignment Protection: Define allowed fields for updates
+FILLABLE_FIELDS = ['title', 'description', 'priority', 'status']
 
 # Helper to parse JSON body
 def parse_body(request):
@@ -156,6 +161,10 @@ def register_view(request):
 
     if not username or not password:
         return JsonResponse({'status': 'fail', 'message': 'Username and password required'}, status=400)
+
+    # Input Validation: Whitelist/Regex for username (OWASP ASVS V5)
+    if not re.match(r'^[a-zA-Z0-9_]+$', username):
+        return JsonResponse({'status': 'fail', 'message': 'Username can only contain letters, numbers, and underscores'}, status=400)
 
     if User.objects.filter(username=username).exists():
         return JsonResponse({'status': 'fail', 'message': 'Username already exists'}, status=400)
@@ -308,11 +317,23 @@ def login_view(request):
     username = data.get('username')
     password = data.get('password')
 
+    # Brute-Force Protection: Check failed attempts
+    ip = request.META.get('REMOTE_ADDR')
+    lockout_key = f"login_failed_{ip}"
+    attempts = cache.get(lockout_key, 0)
+
+    if attempts >= 5:
+        return JsonResponse({'status': 'fail', 'message': 'Too many failed attempts. Please try again in 5 minutes.'}, status=429)
+
     user = authenticate(request, username=username, password=password)
     if user is not None:
+        # Reset failed attempts on success
+        cache.delete(lockout_key)
         login(request, user)
         return JsonResponse({'status': 'success', 'data': {'user': {'username': user.username, 'is_staff': user.is_staff}}})
     else:
+        # Increment failed attempts and set timeout (300 seconds = 5 minutes)
+        cache.set(lockout_key, attempts + 1, timeout=300)
         return JsonResponse({'status': 'fail', 'message': 'Incorrect username or password'}, status=401)
 
 def logout_view(request):
@@ -484,27 +505,30 @@ def dashboard_view(request):
                 }
 
                 const csrfToken = getCookie('csrftoken');
+                let tasksMap = {};
 
                 async function loadTasks() {
                     const response = await fetch('/api/tasks/');
                     const result = await response.json();
                     const list = document.getElementById('taskList');
                     list.innerHTML = '';
+                    tasksMap = {};
                     if (result.data && result.data.tasks) {
                         result.data.tasks.forEach(task => {
+                            tasksMap[task.id] = task;
                             const div = document.createElement('div');
                             div.className = 'task-item';
                             div.innerHTML = `
                                 <div class="task-info">
                                     <h3>${escapeHtml(task.title)}</h3>
                                     <div class="task-meta">
-                                        <span class="badge badge-${task.priority.toLowerCase()}">${task.priority}</span>
-                                        <span class="badge" style="background:#f5f5f5; color:#666;">${task.status}</span>
+                                        <span class="badge badge-${escapeAttr(task.priority).toLowerCase()}">${escapeHtml(task.priority)}</span>
+                                        <span class="badge" style="background:#f5f5f5; color:#666;">${escapeHtml(task.status)}</span>
                                         <p>${escapeHtml(task.description || '')}</p>
                                     </div>
                                 </div>
                                 <div class="actions">
-                                    <button class="btn-edit" onclick='editTask(${JSON.stringify(task)})'>Edit</button>
+                                    <button class="btn-edit" onclick="editTask(${task.id})">Edit</button>
                                     <button class="btn-delete" onclick="deleteTask(${task.id})">Delete</button>
                                 </div>
                             `;
@@ -513,9 +537,16 @@ def dashboard_view(request):
                     }
                 }
 
+                // Context-specific encoding: HTML Body
                 function escapeHtml(text) {
                     if (!text) return '';
-                    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+                    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                }
+
+                // Context-specific encoding: HTML Attributes
+                function escapeAttr(text) {
+                    if (!text) return '';
+                    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
                 }
 
                 async function deleteTask(id) {
@@ -531,7 +562,9 @@ def dashboard_view(request):
                     select.className = select.value;
                 }
 
-                window.editTask = function(task) {
+                window.editTask = function(id) {
+                    const task = tasksMap[id];
+                    if (!task) return;
                     document.getElementById('taskId').value = task.id;
                     document.getElementById('title').value = task.title;
                     document.getElementById('description').value = task.description || '';
@@ -602,6 +635,31 @@ def dashboard_view(request):
         </html>
     """)
 
+def validate_task_input(data):
+    """Input Validation: Whitelist allowed values and Regex for text fields."""
+    errors = []
+    if 'priority' in data:
+        valid_priorities = [c[0] for c in Task.PRIORITY_CHOICES]
+        if data['priority'] not in valid_priorities:
+            errors.append(f"Invalid priority. Allowed: {', '.join(valid_priorities)}")
+    
+    if 'status' in data:
+        valid_statuses = [c[0] for c in Task.STATUS_CHOICES]
+        if data['status'] not in valid_statuses:
+            errors.append(f"Invalid status. Allowed: {', '.join(valid_statuses)}")
+            
+    # Strict Input Whitelisting: Title (Alphanumeric + basic punctuation)
+    if 'title' in data:
+        if not re.match(r'^[\w\s\-\.,!?]+$', data['title']):
+            errors.append("Invalid title. Only alphanumeric characters and basic punctuation are allowed.")
+
+    # Strict Input Whitelisting: Description (No HTML tags)
+    if 'description' in data and data['description']:
+        if re.search(r'[<>]', data['description']):
+            errors.append("Invalid description. HTML tags are not allowed.")
+            
+    return errors
+
 @require_http_methods(["GET", "POST"])
 def task_list_create_view(request):
     if not request.user.is_authenticated:
@@ -614,7 +672,15 @@ def task_list_create_view(request):
 
     if request.method == 'POST':
         data = parse_body(request)
+        
+        # Input Validation
+        errors = validate_task_input(data)
+        if errors:
+            return JsonResponse({'status': 'fail', 'message': 'Validation failed', 'errors': errors}, status=400)
+
         try:
+            # Injection Prevention: Django ORM uses parameterized queries automatically.
+            # Mass Assignment Protection: Explicitly selecting fields prevents unauthorized data entry.
             task = Task.objects.create(
                 user=request.user,
                 title=data.get('title'),
@@ -634,8 +700,13 @@ def task_detail_view(request, pk):
         return JsonResponse({'message': 'Not logged in'}, status=401)
 
     try:
-        # Admin (is_staff) can delete any task, regular users only their own
-        if request.user.is_staff:
+        # Granular RBAC: Check specific permissions for global access
+        has_global_perm = (
+            (request.method == 'DELETE' and request.user.has_perm('task_management.delete_task')) or
+            (request.method == 'PUT' and request.user.has_perm('task_management.change_task'))
+        )
+
+        if has_global_perm:
             task = Task.objects.get(pk=pk)
         else:
             task = Task.objects.get(pk=pk, user=request.user)
@@ -646,10 +717,16 @@ def task_detail_view(request, pk):
         
         if request.method == 'PUT':
             data = parse_body(request)
-            task.title = data.get('title', task.title)
-            task.description = data.get('description', task.description)
-            task.status = data.get('status', task.status)
-            task.priority = data.get('priority', task.priority)
+            
+            # Input Validation
+            errors = validate_task_input(data)
+            if errors:
+                return JsonResponse({'status': 'fail', 'message': 'Validation failed', 'errors': errors}, status=400)
+
+            # Mass Assignment Protection: Only update fields defined in the whitelist
+            for field in FILLABLE_FIELDS:
+                if field in data:
+                    setattr(task, field, data[field])
             task.save()
             return JsonResponse({'status': 'success', 'data': {'task': {'id': task.id, 'title': task.title}}})
 
