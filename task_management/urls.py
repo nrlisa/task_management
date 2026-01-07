@@ -17,11 +17,17 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.views.generic import RedirectView
-from views import register_view, login_view
+from django.contrib.auth.views import LogoutView
+from .views import register_view, login_view, dashboard_view, task_list_create_view, task_detail_view, logout_view
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('secure-admin-portal/logout/', LogoutView.as_view(next_page='/login/')),
+    path('secure-admin-portal/', admin.site.urls),
     path('register/', register_view, name='register'),
     path('login/', login_view, name='login'),
+    path('logout/', logout_view, name='logout'),
+    path('dashboard/', dashboard_view, name='dashboard'),
+    path('api/tasks/', task_list_create_view, name='task-list-create'),
+    path('api/tasks/<int:pk>/', task_detail_view, name='task-detail'),
     path('', RedirectView.as_view(url='/login/')),
 ]

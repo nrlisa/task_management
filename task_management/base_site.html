@@ -1,0 +1,87 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ title }} | Task Manager{% endblock %}
+
+{% block branding %}
+<h1 id="site-name"><a href="{% url 'admin:index' %}">Task Management Admin</a></h1>
+{% endblock %}
+
+{% block extrastyle %}
+<style>
+    /* Override Django Admin Variables to match User Dashboard */
+    :root {
+        --primary: #5c6bc0;       /* Your primary accent color */
+        --secondary: #3f51b5;     /* Darker shade for hover */
+        --accent: #5c6bc0;
+        --header-bg: #ffffff;     /* White header like your navbar */
+        --header-color: #333333;  /* Dark text for header */
+        --link-fg: #5c6bc0;
+        --link-hover-color: #3f51b5;
+        --body-fg: #333333;
+        --body-bg: #f0f2f5;       /* Your app background color */
+        --darkened-bg: #e4e6eb;
+        --selected-bg: #e3f2fd;
+        --selected-row: #fff3e0;
+        --button-bg: #5c6bc0;
+        --button-fg: #ffffff;
+        --button-hover-bg: #3f51b5;
+        --default-button-bg: #5c6bc0;
+        --default-button-fg: #ffffff;
+        --default-button-hover-bg: #3f51b5;
+    }
+
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: var(--body-bg);
+    }
+
+    /* Header Styling */
+    #header {
+        background: var(--header-bg);
+        color: var(--header-color);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        border-bottom: none;
+        padding: 15px 40px;
+    }
+
+    #header a:link, #header a:visited {
+        color: var(--header-color);
+    }
+
+    #branding h1 {
+        color: var(--header-color);
+        font-weight: 600;
+        font-size: 24px;
+    }
+
+    #user-tools {
+        color: #666;
+    }
+
+    /* Card Styling for Modules */
+    .module {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        border: none;
+        margin-bottom: 20px;
+    }
+
+    .module caption, .module h2 {
+        background: #ffffff;
+        color: #333;
+        font-weight: 600;
+        border-bottom: 1px solid #eee;
+        padding: 15px;
+        font-size: 18px;
+    }
+
+    /* Button Styling */
+    .button, input[type=submit], input[type=button], .submit-row input, a.button {
+        border-radius: 6px;
+        padding: 10px 20px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+</style>
+{% endblock %}

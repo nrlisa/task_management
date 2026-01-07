@@ -6,7 +6,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth.decorators import login_required
 from django.middleware.csrf import get_token
-from models import Task
+from .models import Task
 
 # Helper to parse JSON body
 def parse_body(request):
