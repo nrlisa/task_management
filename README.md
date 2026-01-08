@@ -15,6 +15,7 @@ Bash
 
 git clone https://github.com/nrlisa/task_management.git
 cd task_management
+
 2. Create and Activate Virtual Environment
 You must activate the virtual environment every time you open a new terminal to avoid ImportError.
 
