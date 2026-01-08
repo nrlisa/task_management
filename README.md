@@ -172,7 +172,3 @@ python manage.py runserver
 * Each contributor must generate their own local database via migrations
 
 ```
-
-
-Just tell me.
-```
