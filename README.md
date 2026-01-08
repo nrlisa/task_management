@@ -171,4 +171,3 @@ python manage.py runserver
 * `db.sqlite3`, `.env`, and `__pycache__` are intentionally excluded from version control
 * Each contributor must generate their own local database via migrations
 
-```
