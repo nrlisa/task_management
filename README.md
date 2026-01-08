@@ -1,92 +1,179 @@
-Task Management System (Secure Implementation)
-📌 Project Overview
-This is a secure Task Management Platform built using Django. It implements various security controls based on the OWASP Top 10 and ASVS v4.0.3 standards, specifically focusing on Input Validation, Authentication, and Access Control (RBAC).
+Done. I’ve rewritten it into a **clean, professional README.md** format that lecturers and teammates expect. Content is structured, consistent, and technically accurate.
 
-🛠 Prerequisites
-Before you begin, ensure you have the following installed:
+You can **copy–paste this directly** into `README.md`.
 
-Python: Version 3.8 or higher.
+---
 
-Git: To clone and manage the repository.
+````md
+# Task Management System (Secure Implementation)
 
-🚀 Installation & Setup
-1. Clone the Repository
-Bash
+## 📌 Project Overview
+This project is a **secure Task Management Platform** developed using **Django**.  
+It implements multiple security controls aligned with **OWASP Top 10** and **OWASP ASVS v4.0.3**, with emphasis on:
 
+- Input Validation
+- Authentication
+- Role-Based Access Control (RBAC)
+
+The system is designed with security best practices suitable for academic and practical evaluation.
+
+---
+
+## 🛠 Prerequisites
+Ensure the following are installed before setup:
+
+- **Python**: Version 3.8 or higher
+- **Git**: For repository cloning and version control
+
+---
+
+## 🚀 Installation & Setup
+
+### 1️⃣ Clone the Repository
+```bash
 git clone https://github.com/nrlisa/task_management.git
 cd task_management
+````
 
-2. Create and Activate Virtual Environment
-You must activate the virtual environment every time you open a new terminal to avoid ImportError.
+---
 
-Windows:
+### 2️⃣ Create & Activate Virtual Environment
 
-Bash
+You **must activate the virtual environment** every time you open a new terminal.
 
+#### Windows:
+
+```bash
 python -m venv venv
 venv\Scripts\activate
-macOS / Linux:
+```
 
-Bash
+#### macOS / Linux:
 
+```bash
 python3 -m venv venv
 source venv/bin/activate
-3. Install Required Packages
-Bash
+```
 
+---
+
+### 3️⃣ Install Required Packages
+
+```bash
 pip install -r requirements.txt
-🔐 Configuration (Environment Variables)
-For security reasons, the .env file is not included in the repository. You must create one manually in the root folder.
+```
 
-Create a file named .env.
+---
 
-Add the following keys (ask Member 1/2 for the actual secret values via personal message):
+## 🔐 Configuration (Environment Variables)
 
-Ini, TOML
+For security reasons, the `.env` file is **not included** in the repository.
 
+### Steps:
+
+1. Create a file named `.env` in the project root directory
+2. Add the following keys (request actual values from Member 1 / Member 2 via private message):
+
+```env
 SECRET_KEY=your_django_secret_key_here
 JWT_SECRET=your_jwt_secret_key_here
 DEBUG=True
-💾 Database & Admin Setup
-1. Apply Migrations
-This creates the database tables required for the system to function.
+```
 
-Bash
+---
 
+## 💾 Database & Admin Setup
+
+### 1️⃣ Apply Migrations
+
+This will automatically create the local database (`db.sqlite3`).
+
+```bash
 python manage.py makemigrations
 python manage.py migrate
-2. Create a Superuser (Admin)
-To test the Role-Based Access Control (RBAC) and manage users, create an admin account:
+```
 
-Bash
+> Note: The database file is generated locally and **not pushed to GitHub**.
 
+---
+
+### 2️⃣ Create Superuser (Admin)
+
+Used for testing RBAC and managing users.
+
+```bash
 python manage.py createsuperuser
-Follow the prompts in the terminal to set your username and password.
+```
 
-💻 Running the Application
-Start the Server:
+Follow the prompts to set:
 
-Bash
+* Username
+* Email (optional)
+* Password
 
+---
+
+## 💻 Running the Application
+
+### Start the Server:
+
+```bash
 python manage.py runserver
-Access the Platform:
+```
 
-Main App: http://127.0.0.1:8000/
+### Access the System:
 
-Admin Dashboard: http://127.0.0.1:8000/admin/
+* **Main Application**: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
+* **Admin Dashboard**: [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/)
 
-🛡 Security Features Implemented
-Input Validation: Regex and whitelisting to prevent SQL Injection (A03:2021).
+---
 
-Authentication: Secure session management and password hashing (A07:2021).
+## 🛡 Security Features Implemented
 
-Access Control: Middleware implementation to prevent IDOR and unauthorized access (A01:2021).
+* **Input Validation**
+  Regex-based validation and whitelisting to mitigate SQL Injection
+  *(OWASP A03:2021)*
 
-Output Encoding: Auto-escaping to prevent Cross-Site Scripting (XSS).
+* **Authentication**
+  Secure password hashing and session management
+  *(OWASP A07:2021)*
 
-📋 Troubleshooting for Collaborators
-Button not clicking? Ensure you are running the server via runserver and not just opening the .html file. Check that your .env file is present.
+* **Access Control (RBAC)**
+  Middleware enforcement to prevent IDOR and unauthorized access
+  *(OWASP A01:2021)*
 
-ImportError? Check if (venv) is visible in your terminal. If not, run the activation command in Step 2.
+* **Output Encoding**
+  Django auto-escaping enabled to prevent Cross-Site Scripting (XSS)
 
-403 Forbidden? This is likely a CSRF or RBAC issue. Ensure you are logged in with the correct permissions.
+---
+
+## 📋 Troubleshooting (For Collaborators)
+
+### ❓ Button Not Working
+
+* Ensure the server is running using `python manage.py runserver`
+* Do **not** open `.html` files directly
+* Confirm `.env` file exists and is configured
+
+---
+
+### ❓ ImportError
+
+* Check that `(venv)` appears in your terminal
+* If not, activate the virtual environment again
+
+---
+
+### ❓ 403 Forbidden Error
+
+* Likely due to CSRF protection or RBAC restrictions
+* Ensure you are logged in with correct permissions
+* Verify CSRF token usage in forms
+
+---
+
+## 📎 Notes
+
+* `db.sqlite3`, `.env`, and `__pycache__` are intentionally excluded from version control
+* Each contributor must generate their own local database via migrations
+
